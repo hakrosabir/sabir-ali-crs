@@ -1,0 +1,2077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sabir Ali | Conversational Recommender Systems</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <style>
+    #pdfViewerContainer {
+      display: none;
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 70%;
+      height: 100vh;
+      background: #f9fafb;
+      border-left: 2px solid #e5e7eb;
+      z-index: 50;
+      box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    #pdfViewer {
+      width: 100%;
+      height: calc(100% - 80px);
+      border: none;
+      margin-top: 80px;
+      background: #fff;
+    }
+    #pdfContainer {
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      position: relative;
+    }
+    #pdfHeader {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 80px;
+      background: #4f46e5;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      padding: 0 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      z-index: 10;
+    }
+    #pdfToolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 50px;
+      margin-top: 5px;
+    }
+    #closeBtn {
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: all 0.2s;
+      margin-left: 15px;
+    }
+    #closeBtn:hover {
+      background: #dc2626;
+      transform: translateY(-1px);
+    }
+    #pdfTitle {
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin-top: 15px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 80%;
+    }
+    .toolbar-btn {
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 12px;
+      margin-right: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .toolbar-btn:hover {
+      background: #4f46e5;
+    }
+    .toolbar-btn.active {
+      background: #818cf8;
+    }
+    .toolbar-btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    .toolbar-btn:disabled:hover {
+      background: #9ca3af;
+      transform: none;
+    }
+    #highlightMode {
+      background: #f59e0b;
+    }
+    #highlightMode.active {
+      background: #ea580c;
+    }
+    .highlight-overlay {
+      position: absolute;
+      background-color: rgba(252, 211, 77, 0.5);
+      pointer-events: none;
+      z-index: 100;
+      border-radius: 2px;
+    }
+    #loadingIndicator {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.9);
+      padding: 20px 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      z-index: 100;
+      text-align: center;
+    }
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-left-color: #4f46e5;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    #highlightCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 5;
+      pointer-events: none;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 0.375rem;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .badge-blue {
+      background-color: #dbeafe;
+      color: #1e40af;
+    }
+    .badge-green {
+      background-color: #dcfce7;
+      color: #166534;
+    }
+    .badge-red {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+    .resource-link {
+      display: inline-flex;
+      align-items: center;
+      margin-right: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+    @media (max-width: 1024px) {
+      #pdfViewerContainer {
+        width: 90%;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+  <!-- Sidebar -->
+  <aside class="fixed top-0 left-0 h-screen w-72 bg-white shadow-lg flex flex-col items-center p-6 overflow-y-auto">
+    <img src="assets/photo.jpg" alt="Sabir Ali" class="rounded-full w-32 h-32 object-cover border-4 border-indigo-500 mb-4">
+    <h1 class="text-2xl font-semibold text-gray-900">Sabir Ali</h1>
+    <p class="text-sm text-gray-600 mt-1 text-center">Masters Student<br>@ Northeastern University</p>
+    <p class="text-xs text-gray-500 mt-2 text-center leading-tight">
+      Research Direction:<br>Conversation & Recommendation Systems,<br>Deep Learning
+    </p>
+    <hr class="border-gray-300 w-full my-4">
+    <nav class="flex flex-col gap-2 w-full text-sm">
+      <a href="#quickstart" class="hover:text-indigo-600"><i class="fa fa-rocket mr-2"></i>Quick-Start</a>
+      <a href="#survey" class="hover:text-indigo-600"><i class="fa fa-book mr-2"></i>Survey & Tutorial</a>
+      <a href="#toolkit" class="hover:text-indigo-600"><i class="fa fa-wrench mr-2"></i>Toolkit & Dataset</a>
+      <a href="#model" class="hover:text-indigo-600"><i class="fa fa-robot mr-2"></i>Model</a>
+      <a href="#other" class="hover:text-indigo-600"><i class="fa fa-layer-group mr-2"></i>Other</a>
+    </nav>
+    <div class="mt-auto text-xs text-gray-500 mt-4">© 2025 Sabir Ali</div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="ml-72 p-8 space-y-12">
+    <!-- Header Section -->
+    <section>
+      <div class="flex flex-wrap gap-2 mb-4">
+        <span class="badge badge-blue">Last Updated: Recently</span>
+        <span class="badge badge-green">Papers: 89</span>
+        <span class="badge badge-red">PRs Welcome</span>
+      </div>
+      
+      <h1 class="text-3xl font-bold text-indigo-700 mb-3">Conversational Recommender Systems (CRS)</h1>
+      <p class="text-gray-700 text-sm leading-relaxed">
+        A Conversational Recommender System (CRS) is defined by 
+        <a href="#" onclick="openPDF('https://arxiv.org/pdf/2101.09459.pdf')" class="text-indigo-600 underline">Gao et al. (2021)</a> as:
+      </p>
+      <blockquote class="border-l-4 border-indigo-500 pl-4 italic text-gray-600 mt-2">
+        "A recommendation system that can elicit the dynamic preferences of users and take actions based on their current needs 
+        through real-time multi-turn interactions using natural language."
+      </blockquote>
+    </section>
+
+    <!-- Quick-Start -->
+    <section id="quickstart">
+      <h2 class="text-2xl font-semibold text-indigo-600 mb-4">Quick-Start <span class="text-sm font-normal text-gray-500">(Essential Papers)</span></h2>
+      
+      <div class="bg-white shadow rounded-lg p-6">
+        <ol class="list-decimal ml-6 space-y-4">
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">"Deep Conversational Recommender Systems: A New Frontier for Goal-Oriented Dialogue Systems"</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2004.13245.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">"Tutorial on Conversational Recommendation Systems"</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">RecSys(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('http://yongfeng.me/attach/fu-recsys2020.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://conversational-recsys.github.io/" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Website
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">CRSLab: "CRSLab: An Open-Source Toolkit for Building Conversational Recommender System"</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">ACL(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2101.00939.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/RUCAIBox/CRSLab" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Website
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">CRM: "Conversational Recommender System"</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">SIGIR(2018)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/1806.03277.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/ysun30/ConvRec" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Website
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">SAUR: "Towards Conversational Search and Recommendation: System Ask, User Respond"</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">CIKM(2018)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://par.nsf.gov/servlets/purl/10090082')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="http://yongfeng.me/attach/conversation.zip" target="_blank" class="resource-link text-purple-600 hover:text-purple-800">
+                <i class="fas fa-database mr-1"></i> Dataset
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">EAR: "Estimation-Action-Reflection: Towards Deep Interaction Between Conversational and Recommender Systems"</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">WSDM(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2002.09102.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://ear-conv-rec.github.io/" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Website
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">CPR: "Interactive Path Reasoning on Graph for Conversational Recommendation"</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">KDD(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2007.00194.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://cpr-conv-rec.github.io/" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Website
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">ReDial: "Towards Deep Conversational Recommendations"</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">NeurIPS(2018)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/1812.07617.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://redialdata.github.io/website/" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Website
+              </a>
+              <a href="https://github.com/RaymondLi0/conversational-recommendations" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">KBRD: "Towards Knowledge-Based Recommender Dialog System"</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">EMNLP-IJCNLP(2019)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/1908.05391.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/THUDM/KBRD" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3">
+            <span class="font-medium">KGSF: "Improving Conversational Recommender Systems via Knowledge Graph based Semantic Fusion"</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">KDD(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2007.04032.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/Lancelot39/KGSF" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Survey & Tutorial -->
+    <section id="survey">
+      <h2 class="text-2xl font-semibold text-indigo-600 mb-4">Survey & Tutorial</h2>
+      
+      <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3">Survey Papers</h3>
+        <ul class="space-y-4">
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">"Deep Conversational Recommender Systems: A New Frontier for Goal-Oriented Dialogue Systems"</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2004.13245.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">"A survey on conversational recommender systems"</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2004.00646.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3">
+            <span class="font-medium">"Advances and Challenges in Conversational Recommender Systems: A Survey"</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2101.09459.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+        </ul>
+      </div>
+      
+      <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3">Tutorials</h3>
+        <ul class="space-y-4">
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">"Tutorial on Conversational Recommendation Systems"</span>
+            <div class="mt-2">
+              <a href="https://conversational-recsys.github.io/" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Website
+              </a>
+              <span class="text-xs text-gray-500">Variants:</span>
+              <a href="#" onclick="openPDF('http://yongfeng.me/attach/fu-recsys2020.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> RecSys(2020)
+              </a>
+              <a href="#" onclick="openPDF('http://yongfeng.me/attach/fu-wsdm2021.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> WSDM(2021)
+              </a>
+              <a href="#" onclick="openPDF('http://yongfeng.me/attach/fu-iui2021.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> IUI(2021)
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3">
+            <span class="font-medium">"Conversational Recommendation: Formulation, Methods, and Evaluation"</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">SIGIR(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('http://staff.ustc.edu.cn/~hexn/papers/sigir20-tutorial.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="http://staff.ustc.edu.cn/~hexn/slides/sigir20-tutorial-CRS-slides.pdf" target="_blank" class="resource-link text-purple-600 hover:text-purple-800">
+                <i class="fas fa-desktop mr-1"></i> Slides
+              </a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Toolkit & Dataset -->
+    <section id="toolkit">
+      <h2 class="text-2xl font-semibold text-indigo-600 mb-4">Toolkit & Dataset</h2>
+      
+      <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3">Toolkit</h3>
+        <ul class="space-y-4">
+          <li class="pb-3">
+            <span class="font-medium">CRSLab: "CRSLab: An Open-Source Toolkit for Building Conversational Recommender System"</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">ACL(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2101.00939.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/RUCAIBox/CRSLab" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Website
+              </a>
+            </div>
+          </li>
+        </ul>
+      </div>
+      
+      <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3">Datasets</h3>
+        <ol class="list-decimal ml-6 space-y-4">
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">ConvRec</span>: "Conversational Recommender System". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">SIGIR(2018)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/1806.03277.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/ysun30/ConvRec" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">SAUR</span>: "Towards Conversational Search and Recommendation: System Ask, User Respond". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">CIKM(2018)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://par.nsf.gov/servlets/purl/10090082')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="http://yongfeng.me/attach/conversation.zip" target="_blank" class="resource-link text-purple-600 hover:text-purple-800">
+                <i class="fas fa-download mr-1"></i> Download
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">EAR</span>: "Estimation-Action-Reflection: Towards Deep Interaction Between Conversational and Recommender Systems". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">WSDM(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2002.09102.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://ear-conv-rec.github.io/" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">CPR</span>: "Interactive Path Reasoning on Graph for Conversational Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">KDD(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2007.00194.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://cpr-conv-rec.github.io/" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">ReDial</span>: "Towards Deep Conversational Recommendations". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">NeurIPS(2018)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/1812.07617.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://redialdata.github.io/website/" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">OpenDialKG</span>: "OpenDialKG: Explainable Conversational Reasoning with Attention-based Walks over Knowledge Graphs". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">ACL(2019)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://www.aclweb.org/anthology/P19-1081.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/facebookresearch/opendialkg" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">PersuasionForGood</span>: "Persuasion for Good: Towards a Personalized Persuasive Dialogue System for Social Good". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">ACL(2019)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/1906.06725.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://gitlab.com/ucdavisnlp/persuasionforgood" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">CCPE</span>: "Coached Conversational Preference Elicitation: A Case Study in Understanding Movie Preferences". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">SIGDial(2019)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://storage.googleapis.com/pub-tools-public-publication-data/pdf/54521b4011d0c2a19eaade8005ff4a499f754301.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/google-research-datasets/ccpe" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">TG-ReDial</span>: "Towards Topic-Guided Conversational Recommender System". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">COLING(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2010.04125.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/RUCAIBox/TG-ReDial" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">GoRecDial</span>: "Recommendation as a Communication Game: Self-Supervised Bot-Play for Goal-oriented Dialogue". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">EMNLP(2019)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/1909.03922.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://drive.google.com/drive/folders/1nilk6FUktW2VjNlATdM0VMehzSOPIvJ0?usp=sharing" target="_blank" class="resource-link text-purple-600 hover:text-purple-800">
+                <i class="fas fa-download mr-1"></i> Download
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">DuRecDial</span>: "Towards Conversational Recommendation over Multi-Type Dialogs". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">ACL(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2005.03954.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://baidu-nlp.bj.bcebos.com/DuRecDial.zip" target="_blank" class="resource-link text-purple-600 hover:text-purple-800">
+                <i class="fas fa-download mr-1"></i> Download
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">INSPIRED</span>: "INSPIRED: Toward Sociable Recommendation Dialogue Systems". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">EMNLP(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://www.aclweb.org/anthology/2020.emnlp-main.654.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/sweetpeach/Inspired" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">MGConvRex</span>: "User Memory Reasoning for Conversational Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">ACL(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2006.00184.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">COOKIE</span>: "COOKIE: A Dataset for Conversational Recommendation over Knowledge Graphs in E-commerce". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2008.09237.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/zuohuif/COOKIE" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">IARD</span>: "Predicting User Intents and Satisfaction with Dialogue-based Conversational Recommendations". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">UMAP(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('http://www.comp.hkbu.edu.hk/~lichen/download/Cai_UMAP20.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://wanlingcai.github.io/files/2020/UMAP2020_dataset_readme.html" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">DuRecDial 2.0</span>: "DuRecDial 2.0: A Bilingual Parallel Corpus for Conversational Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">EMNLP(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2109.08877.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/liuzeming01/DuRecDial" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">MMConv</span>: "MMConv: An Environment for Multimodal Conversational Search across Multiple Domains". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">SIGIR(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://liziliao.github.io/papers/2021sigir_mmconv.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/liziliao/MMConv" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3">
+            <span class="font-medium">INSPIRED2</span>: "INSPIRED2: An Improved Dataset for Sociable Conversational Recommendation." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">RecSys(2022)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2208.04104.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/ahtsham58/INSPIRED2" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Model -->
+    <section id="model">
+      <h2 class="text-2xl font-semibold text-indigo-600 mb-4">Models</h2>
+      
+      <!-- Attribute-based Models -->
+      <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3">Attribute-based <span class="text-sm font-normal text-gray-500">(Template-based responses)</span></h3>
+        <p class="text-gray-600 mb-4 text-sm italic">Attribute-based CRSs typically capture user preferences by asking queries about item attributes and generates responses using pre-defined templates.</p>
+        
+        <ol class="list-decimal ml-6 space-y-4">
+          <li class="pb-3 border-b border-gray-100">
+            "Towards Conversational Recommender Systems". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">KDD(2016)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://www.microsoft.com/en-us/research/wp-content/uploads/2016/06/rfp0063-christakopoulou.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">CRM</span>: "Conversational Recommender System". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">SIGIR(2018)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/1806.03277.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/ysun30/ConvRec" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">SAUR</span>: "Towards Conversational Search and Recommendation: System Ask, User Respond". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">CIKM(2018)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://par.nsf.gov/servlets/purl/10090082')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="http://yongfeng.me/attach/conversation.zip" target="_blank" class="resource-link text-purple-600 hover:text-purple-800">
+                <i class="fas fa-database mr-1"></i> Dataset
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">Q&R</span>: "Q&R: A Two-Stage Approach toward Interactive Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">KDD(2018)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('http://www.alexbeutel.com/papers/q-and-r-kdd2018.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "Dialogue based recommender system that flexibly mixes utterances and recommendations". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">WI(2019)</span>
+            <div class="mt-2">
+              <a href="https://ieeexplore.ieee.org/abstract/document/8909617" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-external-link-alt mr-1"></i> Link
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">EAR</span>: "Estimation-Action-Reflection: Towards Deep Interaction Between Conversational and Recommender Systems". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">WSDM(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2002.09102.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://ear-conv-rec.github.io/" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">CPR</span>: "Interactive Path Reasoning on Graph for Conversational Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">KDD(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2007.00194.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://cpr-conv-rec.github.io/" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">CRSAL</span>: "CRSAL: Conversational Recommender Systems with Adversarial Learning". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">TOIS(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://repository.kaust.edu.sa/bitstream/handle/10754/665725/TOIS.pdf?sequence=1&isAllowed=y')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/XuhuiRen/CRSAL" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">Qrec</span>: "Towards Question-Based Recommender Systems". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">SIGIR(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2005.14255.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/JieZouIR/Qrec" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">ConTS</span>: "Seamlessly Unifying Attributes and Items: Conversational Recommendation for Cold-Start Users". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">TOIS(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2005.12979.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/xiwenchao/conTS-TOIS-2021" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">UNICORN</span>: "Unified Conversational Recommendation Policy Learning via Graph-based Reinforcement Learning". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">SIGIR(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2105.09710.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/dengyang17/unicorn" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">KBQG</span>: "Learning to Ask Appropriate Questions in Conversational Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2105.04774.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/XuhuiRen/KBQG" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">FPAN</span>: "Adapting User Preference to Online Feedback in Multi-round Conversational Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">WSDM(2021)</span>
+            <div class="mt-2">
+              <a href="https://dl.acm.org/doi/abs/10.1145/3437963.3441791" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-external-link-alt mr-1"></i> Link
+              </a>
+              <a href="https://github.com/xxkkrr/FPAN" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "Developing a Conversational Recommendation System for Navigating Limited Options". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">CHI(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2104.06552.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">MCMIPL</span>: "Multiple Choice Questions based Multi-Interest Policy Learning for Conversational Recommendation." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">WWW(2022)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2112.11775.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/ZYM6-6/MCMIPL" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "Quantifying and Mitigating Popularity Bias in Conversational Recommender Systems." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">CIKM(2022)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2208.03298.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">MINICORN</span>: "Minimalist and High-performance Conversational Recommendation with Uncertainty Estimation for User Preference." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2022)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2206.14468.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">CRIF</span>: "Learning to Infer User Implicit Preference in Conversational Recommendation." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">SIGIR(2022)</span>
+            <div class="mt-2">
+              <a href="https://dl.acm.org/doi/abs/10.1145/3477495.3531844" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-external-link-alt mr-1"></i> Link
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">HICR</span>: "Conversational Recommendation via Hierarchical Information Modeling." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">SIGIR(2022)</span>
+            <div class="mt-2">
+              <a href="https://dl.acm.org/doi/abs/10.1145/3477495.3531830" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-external-link-alt mr-1"></i> Link
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3">
+            <span class="font-medium">MetaCRS</span>: "Meta Policy Learning for Cold-Start Conversational Recommendation." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">WSDM(2023)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2205.11788.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+        </ol>
+      </div>
+      
+      <!-- Generation-based Models -->
+      <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3">Generation-based <span class="text-sm font-normal text-gray-500">(Natural language responses)</span></h3>
+        <p class="text-gray-600 mb-4 text-sm italic">Compared to attribute-based CRSs, generation-based CRSs pay more attention to generate human-like responses in natural language.</p>
+        
+        <ol class="list-decimal ml-6 space-y-4">
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">ReDial</span>: "Towards Deep Conversational Recommendations". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">NeurIPS(2018)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/1812.07617.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/RaymondLi0/conversational-recommendations" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+              <a href="https://redialdata.github.io/website/" target="_blank" class="resource-link text-purple-600 hover:text-purple-800">
+                <i class="fas fa-database mr-1"></i> Dataset
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">KBRD</span>: "Towards Knowledge-Based Recommender Dialog System". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">EMNLP-IJCNLP(2019)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/1908.05391.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/THUDM/KBRD" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">GoRecDial</span>: "Recommendation as a Communication Game: Self-Supervised Bot-Play for Goal-oriented Dialogue". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">EMNLP(2019)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/1909.03922.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/facebookresearch/ParlAI" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+              <a href="https://drive.google.com/drive/folders/1nilk6FUktW2VjNlATdM0VMehzSOPIvJ0?usp=sharing" target="_blank" class="resource-link text-purple-600 hover:text-purple-800">
+                <i class="fas fa-database mr-1"></i> Dataset
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">DialKG Walker</span>: "OpenDialKG: Explainable Conversational Reasoning with Attention-based Walks over Knowledge Graphs". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">ACL(2019)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://www.aclweb.org/anthology/P19-1081.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/madcpt/OpenDialKG" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+              <a href="https://github.com/facebookresearch/opendialkg" target="_blank" class="resource-link text-purple-600 hover:text-purple-800">
+                <i class="fas fa-database mr-1"></i> Dataset
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">DCR</span>: "Deep Conversational Recommender in Travel". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">TKDE(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/1907.00710.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/truthless11/DCR" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">KGSF</span>: "Improving Conversational Recommender Systems via Knowledge Graph based Semantic Fusion". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">KDD(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2007.04032.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/Lancelot39/KGSF" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">MGCG</span>: "Towards Conversational Recommendation over Multi-Type Dialogs". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">ACL(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2005.03954.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/PaddlePaddle/models/tree/develop/PaddleNLP/Research/ACL2020-DuRecDial" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+              <a href="https://baidu-nlp.bj.bcebos.com/DuRecDial.zip" target="_blank" class="resource-link text-purple-600 hover:text-purple-800">
+                <i class="fas fa-database mr-1"></i> Dataset
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">ECR</span>: "Towards Explainable Conversational Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">IJCAI(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://www.ijcai.org/Proceedings/2020/0414.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">INSPIRED</span>: "INSPIRED: Toward Sociable Recommendation Dialogue Systems". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">EMNLP(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://www.aclweb.org/anthology/2020.emnlp-main.654.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/sweetpeach/Inspired" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">TG-ReDial</span>: "Towards Topic-Guided Conversational Recommender System". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">COLING(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2010.04125.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/RUCAIBox/TG-ReDial" target="_blank" class="resource-link text-green-600 hover:text-green-800">
+                <i class="fas fa-globe mr-1"></i> Homepage
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">MGConvRex</span>: "User Memory Reasoning for Conversational Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">COLING(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2006.00184.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">KGConvRec</span>: "Suggest me a movie for tonight: Leveraging Knowledge Graphs for Conversational Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">COLING(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://www.aclweb.org/anthology/2020.coling-main.369.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/rajbsk/KG-conv-rec" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">CR-Walker</span>: "Bridging the Gap between Conversational Reasoning and Interactive Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2010.10333.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/truthless11/CR-Walker" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">RevCore</span>: "RevCore: Review-augmented Conversational Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">ACL-Findings(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2106.00957.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/JD-AI-Research-NLP/RevCore" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">KECRS</span>: "KECRS: Towards Knowledge-Enriched Conversational Recommendation System". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2105.08261.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "Category Aware Explainable Conversational Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2103.08733.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">DuRecDial 2.0</span>: "DuRecDial 2.0: A Bilingual Parallel Corpus for Conversational Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">EMNLP(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2109.08877.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/liuzeming01/DuRecDial" target="_blank" class="resource-link text-purple-600 hover:text-purple-800">
+                <i class="fas fa-database mr-1"></i> Dataset
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">NTRD</span>: "Learning Neural Templates for Recommender Dialogue System." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">EMNLP(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2109.12302.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/jokieleung/NTRD" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">CRFR</span>: "CRFR: Improving Conversational Recommender Systems via Flexible Fragments Reasoning on Knowledge Graphs." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">EMNLP(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://aclanthology.org/2021.emnlp-main.355.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">RID</span>: "Finetuning Large-Scale Pre-trained Language Models for Conversational Recommendation with Knowledge Graph." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2110.07477.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/Lingzhi-WANG/PLM-BasedCRS" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">RecInDial</span>: "RecInDial: A Unified Framework for Conversational Recommendation with Pretrained Language Models." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">AACL(2022)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2110.07477.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/Lingzhi-WANG/PLM-BasedCRS" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">MESE</span>: "Improving Conversational Recommendation Systems' Quality with Context-Aware Item Meta Information." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">NAACL(2022)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2112.08140.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/by2299/MESE" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">C2-CRS</span>: "C2-CRS: Coarse-to-Fine Contrastive Learning for Conversational Recommender System." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">WSDM(2022)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2201.02732.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/RUCAIBox/WSDM2022-C2CRS" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">BARCOR</span>: "BARCOR: Towards A Unified Framework for Conversational Recommendation Systems." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2022)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2203.14257.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">UniMIND</span>: "A Unified Multi-task Learning Framework for Multi-goal Conversational Recommender Systems." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">TOIS(2023)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2204.06923.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/dengyang17/unimind" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">UCCR</span>: "User-Centric Conversational Recommendation with Multi-Aspect User Modeling." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">SIGIR(2022)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2204.09263.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/lisk123/UCCR" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">UPCR</span>: "Variational Reasoning about User Preferences for Conversational Recommendation." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">SIGIR(2022)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://staff.fnwi.uva.nl/m.derijke/wp-content/papercite-data/pdf/ren-2022-variational.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/tianz2020/UPCR" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">TSCR</span>: "Improving Conversational Recommender Systems via Transformer-based Sequential Modelling." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">SIGIR(2022)</span>
+            <div class="mt-2">
+              <a href="https://dl.acm.org/doi/abs/10.1145/3477495.3531852" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-external-link-alt mr-1"></i> Link
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">CCRS</span>: "Customized Conversational Recommender Systems." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">ECML-PKDD(2022)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2207.00814.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">UniCRS</span>: "Towards Unified Conversational Recommender Systems via Knowledge-Enhanced Prompt Learning." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">KDD(2022)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2206.09363.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/RUCAIBox/UniCRS" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">EGCR</span>: "EGCR: Explanation Generation for Conversational Recommendation." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2022)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2208.08035.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "Improving Conversational Recommender System via Contextual and Time-Aware Modeling with Less Domain-Specific Knowledge." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2022)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2209.11386.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3">
+            <span class="font-medium">DICR</span>: "Aligning Recommendation and Conversation via Dual Imitation." 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2022)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2211.02848.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+        </ol>
+      </div>
+      
+      <!-- Other Models -->
+      <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3">Other Models</h3>
+        
+        <ol class="list-decimal ml-6 space-y-4">
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">Converse-Et-Impera</span>: "Converse-Et-Impera: Exploiting Deep Learning and Hierarchical Reinforcement Learning for Conversational Recommender Systems". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">AI*IA(2017)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://www.researchgate.net/profile/Alessandro-Suglia/publication/320875588_Converse-Et-Impera_Exploiting_Deep_Learning_and_Hierarchical_Reinforcement_Learning_for_Conversational_Recommender_Systems/links/5bf6ad1592851c6b27d27324/Converse-Et-Impera-Exploiting-Deep-Learning-and-Hierarchical-Reinforcement-Learning-for-Conversational-Recommender-Systems.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "A Model of Social Explanations for a Conversational Movie Recommendation System". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">HAI(2019)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://eprints.gla.ac.uk/193937/7/193937.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "Dynamic Online Conversation Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">ACL(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://www.aclweb.org/anthology/2020.acl-main.305.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/zxshamson/dy-conv-rec" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">IAI MovieBot</span>: "IAI MovieBot: A Conversational Movie Recommender System". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">CIKM(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2009.03668.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/iai-group/moviebot" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">ConUCB</span>: "Conversational Contextual Bandit: Algorithm and Application". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">WWW(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/1906.01219.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/Xiaoyinggit/ConUCB" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">Cora</span>: "A Socially-Aware Conversational Recommender System for Personalized Recipe Recommendations". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">HAI(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://www.researchgate.net/profile/Florian-Pecune/publication/346716927_A_Socially-Aware_Conversational_Recommender_System_for_Personalized_Recipe_Recommendations/links/5fcf621045851568d149d95e/A-Socially-Aware-Conversational-Recommender-System-for-Personalized-Recipe-Recommendations.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "Conversational Music Recommendation based on Bandits". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">ICKG(2020)</span>
+            <div class="mt-2">
+              <a href="https://ieeexplore.ieee.org/abstract/document/9194509/" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-external-link-alt mr-1"></i> Link
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">n-by-p</span>: "Navigation-by-preference: a new conversational recommender with preference-based feedback". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">IUI(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('http://www.cs.ucc.ie/~dgb/papers/Rana-Bridge-2020.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "A Bayesian Approach to Conversational Recommendation Systems". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">AAAI Workshop(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2002.05063.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "Towards Retrieval-based Conversational Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2109.02311.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3">
+            ""It doesn't look good for a date": Transforming Critiques into Preferences for Conversational Recommendation Systems". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">EMNLP(2021)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2109.07576.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Other -->
+    <section id="other">
+      <h2 class="text-2xl font-semibold text-indigo-600 mb-4">Other Resources</h2>
+      
+      <div class="bg-white shadow rounded-lg p-6">
+        <ol class="list-decimal ml-6 space-y-4">
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">CCPE</span>: "Coached Conversational Preference Elicitation: A Case Study in Understanding Movie Preferences". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">SIGDial(2019)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://storage.googleapis.com/pub-tools-public-publication-data/pdf/54521b4011d0c2a19eaade8005ff4a499f754301.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/google-research-datasets/ccpe" target="_blank" class="resource-link text-purple-600 hover:text-purple-800">
+                <i class="fas fa-database mr-1"></i> Dataset
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "Leveraging Historical Interaction Data for Improving Conversational Recommender System". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">CIKM(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2008.08247.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/Lancelot39/Pre-CRS" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "Evaluating Conversational Recommender Systems via User Simulation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">KDD(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2006.08732.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/iai-group/UserSimConvRec" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "End-to-End Learning for Conversational Recommendation: A Long Way to Go?". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">RecSys(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('http://ceur-ws.org/Vol-2682/short1.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://drive.google.com/drive/folders/10gPOmaiFrZjIULIa3LsdmuyvJvnCV_Xq" target="_blank" class="resource-link text-purple-600 hover:text-purple-800">
+                <i class="fas fa-archive mr-1"></i> Material
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "What Does BERT Know about Books, Movies and Music? Probing BERT for Conversational Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">RecSys(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2007.15356.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/Guzpenha/ConvRecProbingBERT" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "Latent Linear Critiquing for Conversational Recommender Systems". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">WWW(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('http://www.inago.com/wp-content/uploads/2020/08/UofT-Sanner_www20_llc.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://github.com/k9luo/LatentLinearCritiquingforConvRecSys" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "A Ranking Optimization Approach to Latent Linear Critiquing for Conversational Recommender Systems". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">RecSys(2020)</span>
+            <div class="mt-2">
+              <a href="https://dl.acm.org/doi/abs/10.1145/3383313.3412240" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-external-link-alt mr-1"></i> Link
+              </a>
+              <a href="https://github.com/litosly/RankingOptimizationApproachtoLLC" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-code mr-1"></i> Code
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "A Comparison of Explicit and Implicit Proactive Dialogue Strategies for Conversational Recommendation". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">LREC(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://www.aclweb.org/anthology/2020.lrec-1.54.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            "Predicting User Intents and Satisfaction with Dialogue-based Conversational Recommendations". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">UMAP(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('http://www.comp.hkbu.edu.hk/~lichen/download/Cai_UMAP20.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+              <a href="https://wanlingcai.github.io/files/2020/UMAP2020_dataset_readme.html" target="_blank" class="resource-link text-purple-600 hover:text-purple-800">
+                <i class="fas fa-database mr-1"></i> Dataset
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3 border-b border-gray-100">
+            <span class="font-medium">ConveRSE</span>: "Conversational Recommender Systems and natural language: A study through the ConveRSE framework". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">Decision Support Systems(2020)</span>
+            <div class="mt-2">
+              <a href="https://www.sciencedirect.com/science/article/pii/S0167923620300051" target="_blank" class="resource-link text-blue-600 hover:text-blue-800">
+                <i class="fas fa-external-link-alt mr-1"></i> Link
+              </a>
+              <a href="https://github.com/swapUniba/ConvRecSysDataset" target="_blank" class="resource-link text-purple-600 hover:text-purple-800">
+                <i class="fas fa-database mr-1"></i> Dataset
+              </a>
+            </div>
+          </li>
+          
+          <li class="pb-3">
+            "On Estimating the Training Cost of Conversational Recommendation Systems". 
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded ml-2">arXiv(2020)</span>
+            <div class="mt-2">
+              <a href="#" onclick="openPDF('https://arxiv.org/pdf/2011.05302.pdf')" class="resource-link text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-file-pdf mr-1"></i> PDF
+              </a>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+  </main>
+
+  <!-- PDF Reader -->
+  <div id="pdfViewerContainer">
+    <div id="pdfHeader">
+      <div id="pdfTitle">PDF Viewer</div>
+      <div id="pdfToolbar">
+        <div>
+          <button id="prevBtn" class="toolbar-btn"><i class="fa fa-arrow-left"></i></button>
+          <button id="nextBtn" class="toolbar-btn"><i class="fa fa-arrow-right"></i></button>
+          <span id="pageCounter">1 / 1</span>
+        </div>
+        <div>
+          <button id="zoomOut" class="toolbar-btn"><i class="fa fa-search-minus"></i></button>
+          <button id="zoomIn" class="toolbar-btn"><i class="fa fa-search-plus"></i></button>
+          <button id="fitWidth" class="toolbar-btn"><i class="fa fa-arrows-alt-h"></i></button>
+          <button id="highlightMode" class="toolbar-btn"><i class="fa fa-highlighter"></i> Highlight</button>
+          <button id="clearHighlights" class="toolbar-btn"><i class="fa fa-trash"></i> Clear</button>
+          <button id="closeBtn">Close ✖</button>
+        </div>
+      </div>
+    </div>
+    <div id="pdfContainer">
+      <canvas id="pdfViewer"></canvas>
+      <canvas id="highlightCanvas"></canvas>
+      <div id="loadingIndicator">
+        <div class="spinner"></div>
+        <div>Loading PDF...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Clean URL function to remove extra spaces and handle encoding properly
+    function cleanUrl(url) {
+      return url.trim();
+    }
+    
+    // Extract filename/title from URL for display
+    function getDocumentTitle(url) {
+      const filename = url.split('/').pop().split('?')[0];
+      // Remove .pdf extension and format nicely
+      let title = filename.replace('.pdf', '').replace(/_/g, ' ').replace(/%20/g, ' ');
+      return title.length > 50 ? title.substring(0, 47) + '...' : title;
+    }
+
+    let pdfDoc = null;
+    let pageNum = 1;
+    let pageRendering = false;
+    let pageNumPending = null;
+    let scale = 1.5;
+    let canvas = document.getElementById('pdfViewer');
+    let highlightCanvas = document.getElementById('highlightCanvas');
+    let ctx = canvas.getContext('2d');
+    let highlightCtx = highlightCanvas.getContext('2d');
+    let isHighlightMode = false;
+    let highlights = {};
+    let currentUrl = '';
+    let startX, startY, endX, endY;
+    let isDrawing = false;
+    let currentViewport = null;
+
+    // Initialize PDF.js worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+    // Set up event listeners
+    document.getElementById('closeBtn').addEventListener('click', closePDF);
+    document.getElementById('prevBtn').addEventListener('click', () => goToPage(pageNum - 1));
+    document.getElementById('nextBtn').addEventListener('click', () => goToPage(pageNum + 1));
+    document.getElementById('highlightMode').addEventListener('click', toggleHighlightMode);
+    document.getElementById('clearHighlights').addEventListener('click', clearHighlights);
+
+    // Add zoom functionality
+    document.getElementById('zoomIn').addEventListener('click', () => changeScale(0.2));
+    document.getElementById('zoomOut').addEventListener('click', () => changeScale(-0.2));
+    document.getElementById('fitWidth').addEventListener('click', fitToWidth);
+
+    function toggleHighlightMode() {
+      isHighlightMode = !isHighlightMode;
+      const btn = document.getElementById('highlightMode');
+      btn.classList.toggle('active', isHighlightMode);
+      
+      if (isHighlightMode) {
+        canvas.style.cursor = 'crosshair';
+        highlightCanvas.style.pointerEvents = 'auto';
+        highlightCanvas.addEventListener('mousedown', startHighlight);
+        highlightCanvas.addEventListener('mousemove', drawHighlight);
+        highlightCanvas.addEventListener('mouseup', endHighlight);
+        highlightCanvas.addEventListener('mouseout', endHighlight);
+      } else {
+        canvas.style.cursor = 'default';
+        highlightCanvas.style.pointerEvents = 'none';
+        highlightCanvas.removeEventListener('mousedown', startHighlight);
+        highlightCanvas.removeEventListener('mousemove', drawHighlight);
+        highlightCanvas.removeEventListener('mouseup', endHighlight);
+        highlightCanvas.removeEventListener('mouseout', endHighlight);
+      }
+    }
+
+    function clearHighlights() {
+      if (!currentUrl || !highlights[currentUrl]) return;
+      
+      highlights[currentUrl] = {};
+      localStorage.setItem('pdfHighlights', JSON.stringify(highlights));
+      redrawHighlights();
+    }
+
+    function startHighlight(e) {
+      if (!isHighlightMode) return;
+      
+      isDrawing = true;
+      const rect = highlightCanvas.getBoundingClientRect();
+      startX = e.clientX - rect.left;
+      startY = e.clientY - rect.top;
+    }
+
+    function drawHighlight(e) {
+      if (!isHighlightMode || !isDrawing) return;
+      
+      const rect = highlightCanvas.getBoundingClientRect();
+      endX = e.clientX - rect.left;
+      endY = e.clientY - rect.top;
+      
+      // Clear highlight canvas and redraw existing highlights
+      redrawHighlights();
+      
+      // Draw temporary highlight rectangle
+      highlightCtx.fillStyle = 'rgba(252, 211, 77, 0.5)';
+      const width = endX - startX;
+      const height = endY - startY;
+      highlightCtx.fillRect(startX, startY, width, height);
+    }
+
+    function endHighlight(e) {
+      if (!isHighlightMode || !isDrawing) return;
+      
+      isDrawing = false;
+      
+      const rect = highlightCanvas.getBoundingClientRect();
+      endX = e.clientX - rect.left;
+      endY = e.clientY - rect.top;
+      
+      // Save highlight (normalize coordinates to canvas dimensions)
+      const highlight = {
+        x: Math.min(startX, endX) / highlightCanvas.width,
+        y: Math.min(startY, endY) / highlightCanvas.height,
+        width: Math.abs(endX - startX) / highlightCanvas.width,
+        height: Math.abs(endY - startY) / highlightCanvas.height,
+        page: pageNum
+      };
+      
+      if (!highlights[currentUrl]) {
+        highlights[currentUrl] = {};
+      }
+      
+      if (!highlights[currentUrl][pageNum]) {
+        highlights[currentUrl][pageNum] = [];
+      }
+      
+      highlights[currentUrl][pageNum].push(highlight);
+      localStorage.setItem('pdfHighlights', JSON.stringify(highlights));
+      
+      // Redraw all highlights
+      redrawHighlights();
+    }
+
+    function redrawHighlights() {
+      if (!highlightCanvas || !highlightCtx) return;
+      
+      // Clear highlight canvas
+      highlightCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
+      
+      // Draw all highlights for current page
+      if (highlights[currentUrl] && highlights[currentUrl][pageNum]) {
+        const pageHighlights = highlights[currentUrl][pageNum];
+        
+        pageHighlights.forEach(highlight => {
+          highlightCtx.fillStyle = 'rgba(252, 211, 77, 0.5)';
+          highlightCtx.fillRect(
+            highlight.x * highlightCanvas.width,
+            highlight.y * highlightCanvas.height,
+            highlight.width * highlightCanvas.width,
+            highlight.height * highlightCanvas.height
+          );
+        });
+      }
+    }
+
+    function openPDF(url) {
+      const cleanedUrl = cleanUrl(url);
+      const viewerContainer = document.getElementById("pdfViewerContainer");
+      const pdfTitle = document.getElementById("pdfTitle");
+      
+      // Set document title
+      pdfTitle.textContent = getDocumentTitle(cleanedUrl);
+      currentUrl = cleanedUrl;
+      
+      // Display the viewer
+      viewerContainer.style.display = "block";
+      
+      // Show loading indicator
+      document.getElementById('loadingIndicator').style.display = 'block';
+      
+      // Load the PDF
+      loadPDF(cleanedUrl);
+      
+      // Prevent body scroll when PDF viewer is open
+      document.body.style.overflow = 'hidden';
+      
+      // Close PDF when clicking outside the viewer (on the overlay)
+      document.addEventListener('click', function closeOnClickOutside(e) {
+        if (e.target === viewerContainer) {
+          closePDF();
+          document.removeEventListener('click', closeOnClickOutside);
+        }
+      });
+    }
+
+    function loadPDF(url) {
+      // Show loading state
+      const pageCounter = document.getElementById('pageCounter');
+      pageCounter.textContent = 'Loading...';
+      
+      // Reset to first page
+      pageNum = 1;
+      
+      // Using CORS proxy to avoid CORS issues with some PDFs
+      // Try without proxy first, then fallback to proxy if needed
+      let pdfUrl = url;
+      
+      // For external PDFs, we'll use a CORS proxy
+      if (!url.startsWith(window.location.origin) && !url.startsWith('/')) {
+        pdfUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      }
+      
+      pdfjsLib.getDocument(pdfUrl).promise.then(pdfDoc_ => {
+        pdfDoc = pdfDoc_;
+        document.getElementById('pageCounter').textContent = `1 / ${pdfDoc.numPages}`;
+        
+        // Enable/disable navigation buttons
+        document.getElementById('prevBtn').disabled = pageNum <= 1;
+        document.getElementById('nextBtn').disabled = pageNum >= pdfDoc.numPages;
+        
+        // Load existing highlights for this document
+        const savedHighlights = localStorage.getItem('pdfHighlights');
+        highlights = savedHighlights ? JSON.parse(savedHighlights) : {};
+        
+        // Hide loading indicator
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        // Render first page
+        renderPage(1);
+      }).catch(error => {
+        console.error('Error loading PDF:', error);
+        
+        // Try with a different proxy if the first one failed
+        if (!url.includes('corsproxy')) {
+          const fallbackUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+          loadPDF(fallbackUrl);
+          return;
+        }
+        
+        // Hide loading indicator
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        // Fallback - open in new tab if PDF.js fails
+        alert('Failed to load PDF. Opening in new tab instead.');
+        window.open(url, "_blank");
+        closePDF();
+      });
+    }
+
+    function renderPage(num) {
+      pageRendering = true;
+      
+      // Get page
+      pdfDoc.getPage(num).then(page => {
+        // Increase DPI for better text quality
+        const dpi = 150;
+        const pdfScale = dpi / 72; // PDF default is 72 DPI
+        
+        currentViewport = page.getViewport({ scale: scale * pdfScale });
+        
+        // Set canvas dimensions with high DPI
+        canvas.height = currentViewport.height;
+        canvas.width = currentViewport.width;
+        
+        // Set highlight canvas dimensions to match PDF canvas
+        highlightCanvas.height = currentViewport.height;
+        highlightCanvas.width = currentViewport.width;
+        
+        // Set canvas CSS size to maintain proportions
+        const displayHeight = currentViewport.height / (window.devicePixelRatio || 1);
+        const displayWidth = currentViewport.width / (window.devicePixelRatio || 1);
+        
+        canvas.style.height = `${displayHeight}px`;
+        canvas.style.width = `${displayWidth}px`;
+        highlightCanvas.style.height = `${displayHeight}px`;
+        highlightCanvas.style.width = `${displayWidth}px`;
+        
+        // Render PDF page into canvas context with high quality
+        const renderContext = {
+          canvasContext: ctx,
+          viewport: currentViewport,
+          enableWebGL: true,
+          // Improve text rendering
+          textLayer: false,
+          enhanceTextSelection: false
+        };
+        
+        const renderTask = page.render(renderContext);
+        
+        // Wait for rendering to finish
+        renderTask.promise.then(() => {
+          pageRendering = false;
+          
+          // Draw highlights for this page
+          redrawHighlights();
+          
+          if (pageNumPending !== null) {
+            // New page rendering is pending
+            renderPage(pageNumPending);
+            pageNumPending = null;
+          }
+        });
+      });
+      
+      // Update page counter
+      document.getElementById('pageCounter').textContent = `${num} / ${pdfDoc.numPages}`;
+      
+      // Enable/disable navigation buttons
+      document.getElementById('prevBtn').disabled = num <= 1;
+      document.getElementById('nextBtn').disabled = num >= pdfDoc.numPages;
+    }
+
+    function goToPage(num) {
+      if (num < 1 || num > pdfDoc.numPages) return;
+      
+      if (pageRendering) {
+        pageNumPending = num;
+      } else {
+        pageNum = num;
+        renderPage(pageNum);
+      }
+    }
+
+    function changeScale(delta) {
+      scale += delta;
+      scale = Math.max(0.5, Math.min(3, scale)); // Limit scale between 0.5 and 3
+      renderPage(pageNum);
+    }
+
+    function fitToWidth() {
+      // Calculate scale to fit width
+      pdfDoc.getPage(pageNum).then(page => {
+        const containerWidth = document.getElementById('pdfContainer').clientWidth;
+        const viewport = page.getViewport({ scale: 1 });
+        scale = containerWidth / viewport.width;
+        renderPage(pageNum);
+      });
+    }
+
+    function closePDF() {
+      document.getElementById("pdfViewerContainer").style.display = "none";
+      
+      // Restore body scroll
+      document.body.style.overflow = 'auto';
+      
+      // Clean up PDF document
+      pdfDoc = null;
+      pageNum = 1;
+      
+      // Turn off highlight mode if active
+      if (isHighlightMode) {
+        toggleHighlightMode();
+      }
+      
+      // Clear canvases
+      if (canvas && ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      if (highlightCanvas && highlightCtx) {
+        highlightCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
+      }
+    }
+    
+    // Handle keyboard navigation for PDF viewer
+    document.addEventListener('keydown', function(e) {
+      if (document.getElementById("pdfViewerContainer").style.display === "block") {
+        if (e.key === 'Escape') {
+          closePDF();
+        } else if (e.key === 'ArrowLeft') {
+          goToPage(pageNum - 1);
+        } else if (e.key === 'ArrowRight') {
+          goToPage(pageNum + 1);
+        } else if (e.key === 'h' || e.key === 'H') {
+          toggleHighlightMode();
+        } else if (e.key === '+' || e.key === '=') {
+          changeScale(0.2);
+        } else if (e.key === '-' || e.key === '_') {
+          changeScale(-0.2);
+        } else if (e.key === 'Delete' || e.key === 'Backspace') {
+          clearHighlights();
+        }
+      }
+    });
+    
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          window.scrollTo({
+            top: target.offsetTop - 20,
+            behavior: 'smooth'
+          });
+        }
+      });
+    });
+    
+    // Load saved highlights on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      const savedHighlights = localStorage.getItem('pdfHighlights');
+      highlights = savedHighlights ? JSON.parse(savedHighlights) : {};
+      
+      // Ensure all PDF links use the openPDF function
+      document.querySelectorAll('a[href*=".pdf"]').forEach(link => {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          openPDF(this.href);
+        });
+      });
+      
+      // Preload PDF.js worker for faster initial load
+      pdfjsLib.getDocument('').promise.catch(() => {
+        // Ignore error - we're just warming up the worker
+      });
+    });
+  </script>
+</body>
+</html>
