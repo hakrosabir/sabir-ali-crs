@@ -1858,17 +1858,19 @@
       
       // Reset to first page
       pageNum = 1;
-      
-      // Using CORS proxy to avoid CORS issues with some PDFs
-      // Try without proxy first, then fallback to proxy if needed
-      let pdfUrl = url;
-      
-      // For external PDFs, we'll use a CORS proxy
-      if (!url.startsWith(window.location.origin) && !url.startsWith('/')) {
-        pdfUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-      }
-      
-      pdfjsLib.getDocument(pdfUrl).promise.then(pdfDoc_ => {
+      // Attempt to load directly (allows streaming / range requests when supported)
+      const tryDirectLoad = (src) => {
+        return pdfjsLib.getDocument({ url: src, rangeChunkSize: 65536 }).promise;
+      };
+
+      // Fallback proxy urls (try faster proxies first)
+      const proxyUrls = [
+        (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+        (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`
+      ];
+
+      // Try direct load first, then fall back to proxies if direct fails
+      tryDirectLoad(url).then(pdfDoc_ => {
         pdfDoc = pdfDoc_;
         document.getElementById('pageCounter').textContent = `1 / ${pdfDoc.numPages}`;
         
@@ -1886,22 +1888,39 @@
         // Render first page
         renderPage(1);
       }).catch(error => {
-        console.error('Error loading PDF:', error);
-        
-        // Try with a different proxy if the first one failed
-        if (!url.includes('corsproxy')) {
-          const fallbackUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-          loadPDF(fallbackUrl);
-          return;
-        }
-        
-        // Hide loading indicator
-        document.getElementById('loadingIndicator').style.display = 'none';
-        
-        // Fallback - open in new tab if PDF.js fails
-        alert('Failed to load PDF. Opening in new tab instead.');
-        window.open(url, "_blank");
-        closePDF();
+        console.warn('Direct PDF load failed, trying proxies (error):', error);
+
+        // Try proxies in order
+        const tryProxies = (index) => {
+          if (index >= proxyUrls.length) {
+            // All proxies failed
+            document.getElementById('loadingIndicator').style.display = 'none';
+            alert('Failed to load PDF via viewer. Opening in new tab instead.');
+            window.open(url, '_blank');
+            closePDF();
+            return;
+          }
+
+          const proxyUrl = proxyUrls[index](url);
+          tryDirectLoad(proxyUrl).then(pdfDoc_ => {
+            pdfDoc = pdfDoc_;
+            document.getElementById('pageCounter').textContent = `1 / ${pdfDoc.numPages}`;
+
+            document.getElementById('prevBtn').disabled = pageNum <= 1;
+            document.getElementById('nextBtn').disabled = pageNum >= pdfDoc.numPages;
+
+            const savedHighlights = localStorage.getItem('pdfHighlights');
+            highlights = savedHighlights ? JSON.parse(savedHighlights) : {};
+
+            document.getElementById('loadingIndicator').style.display = 'none';
+            renderPage(1);
+          }).catch(() => {
+            // try next proxy
+            tryProxies(index + 1);
+          });
+        };
+
+        tryProxies(0);
       });
     }
 
@@ -1910,39 +1929,39 @@
       
       // Get page
       pdfDoc.getPage(num).then(page => {
-        // Increase DPI for better text quality
-        const dpi = 150;
-        const pdfScale = dpi / 72; // PDF default is 72 DPI
-        
-        currentViewport = page.getViewport({ scale: scale * pdfScale });
-        
-        // Set canvas dimensions with high DPI
-        canvas.height = currentViewport.height;
-        canvas.width = currentViewport.width;
-        
-        // Set highlight canvas dimensions to match PDF canvas
-        highlightCanvas.height = currentViewport.height;
-        highlightCanvas.width = currentViewport.width;
-        
-        // Set canvas CSS size to maintain proportions
-        const displayHeight = currentViewport.height / (window.devicePixelRatio || 1);
-        const displayWidth = currentViewport.width / (window.devicePixelRatio || 1);
-        
-        canvas.style.height = `${displayHeight}px`;
-        canvas.style.width = `${displayWidth}px`;
-        highlightCanvas.style.height = `${displayHeight}px`;
-        highlightCanvas.style.width = `${displayWidth}px`;
-        
-        // Render PDF page into canvas context with high quality
+        // Use devicePixelRatio-aware rendering to keep canvases smaller while
+        // preserving sharpness. This is faster than rendering at a huge DPI.
+        const dpr = window.devicePixelRatio || 1;
+
+        // Base viewport at the desired scale
+        const viewport = page.getViewport({ scale: scale });
+        currentViewport = viewport;
+
+        // Set canvas size in device pixels
+        canvas.width = Math.floor(viewport.width * dpr);
+        canvas.height = Math.floor(viewport.height * dpr);
+
+        // Size CSS to the layout size (CSS pixels)
+        canvas.style.width = `${Math.floor(viewport.width)}px`;
+        canvas.style.height = `${Math.floor(viewport.height)}px`;
+
+        // Apply transform so PDF renders crisply for high-DPI displays
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // Match highlight canvas to PDF canvas
+        highlightCanvas.width = canvas.width;
+        highlightCanvas.height = canvas.height;
+        highlightCanvas.style.width = canvas.style.width;
+        highlightCanvas.style.height = canvas.style.height;
+        highlightCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // Render PDF page into canvas context. Keep render settings simple to
+        // maximize speed; avoid forcing extra work like high DPI multipliers.
         const renderContext = {
           canvasContext: ctx,
-          viewport: currentViewport,
-          enableWebGL: true,
-          // Improve text rendering
-          textLayer: false,
-          enhanceTextSelection: false
+          viewport: viewport
         };
-        
+
         const renderTask = page.render(renderContext);
         
         // Wait for rendering to finish
