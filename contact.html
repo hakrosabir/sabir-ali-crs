@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contact — Sabir Ali</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    body { background: #f3f4f6; }
+  </style>
+</head>
+<body class="antialiased text-gray-800">
+  <div class="max-w-4xl mx-auto p-6">
+    <a href="index.html" class="inline-flex items-center gap-2 text-sm text-indigo-600 mb-6"><i class="fa fa-arrow-left"></i> Back</a>
+
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+      <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+        <div class="col-span-1 flex flex-col items-center md:items-start">
+          <!-- Photo (place your photo at assets/photo.jpg) -->
+          <img src="assets/photo.jpg" alt="Sabir Ali" class="w-36 h-36 rounded-full object-cover border-4 border-indigo-500 mb-4" />
+          <h1 class="text-2xl font-semibold">Sabir Ali</h1>
+          <p class="text-sm text-gray-600">Masters Student @ Northeastern University</p>
+        </div>
+
+        <div class="col-span-2">
+          <h2 class="text-xl font-semibold mb-2">Contact</h2>
+          <p class="text-gray-600 mb-4">Feel free to reach out via email, phone, or QR code below.</p>
+
+          <div class="space-y-4">
+            <div class="flex items-start gap-4">
+              <i class="fa fa-envelope text-indigo-600 text-xl mt-1"></i>
+              <div>
+                <div class="text-sm text-gray-500">Email</div>
+                <a href="mailto:2428042@stu.neu.edu.cn" class="text-indigo-700 font-medium">2428042@stu.neu.edu.cn</a>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4">
+              <i class="fa fa-phone text-indigo-600 text-xl mt-1"></i>
+              <div>
+                <div class="text-sm text-gray-500">Phone</div>
+                <a href="tel:+8615541523770" class="text-indigo-700 font-medium">+86 155 4152 3770</a>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4">
+              <i class="fa fa-qrcode text-indigo-600 text-xl mt-1"></i>
+              <div>
+                <div class="text-sm text-gray-500">QR Code</div>
+                <div class="mt-2">
+                  <!-- Put a QR code image at assets/qr.png (or change filename as needed) -->
+                  <img src="assets/qr_code.PNG" alt="QR Code" class="w-36 h-36 object-contain border rounded-md" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6">
+            <p class="text-xs text-gray-500">You can also connect via the links on the main page.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="mt-6 text-center text-xs text-gray-500">© 2025 Sabir Ali</footer>
+  </div>
+</body>
+</html>
