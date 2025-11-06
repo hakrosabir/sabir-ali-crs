@@ -185,8 +185,53 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-  <!-- Sidebar -->
-  <aside class="fixed top-0 left-0 h-screen w-72 bg-white shadow-lg flex flex-col items-center p-6 overflow-y-auto">
+  <!-- Mobile header (shown on small screens) -->
+  <header class="lg:hidden fixed top-0 left-0 right-0 bg-white shadow z-40">
+    <div class="flex items-center justify-between p-3">
+      <div class="flex items-center gap-3">
+        <button id="mobileMenuBtn" class="p-2 rounded-md focus:outline-none">
+          <i class="fa fa-bars text-xl text-gray-700"></i>
+        </button>
+        <img src="assets/photo.jpg" alt="Sabir Ali" class="w-10 h-10 rounded-full border-2 border-indigo-500"/>
+        <div class="leading-tight">
+          <div class="text-sm font-semibold">Sabir Ali</div>
+          <div class="text-xs text-gray-500">Masters @ Northeastern</div>
+        </div>
+      </div>
+      <div class="text-sm">
+        <a href="#" class="text-indigo-600">Contact</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile sliding menu (hidden by default) -->
+  <div id="mobileOverlay" class="lg:hidden fixed inset-0 bg-black bg-opacity-40 hidden z-40"></div>
+  <nav id="mobileMenu" class="lg:hidden fixed inset-y-0 left-0 w-72 bg-white shadow-lg transform -translate-x-full transition-transform duration-200 z-50 overflow-y-auto">
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <img src="assets/photo.jpg" alt="Sabir Ali" class="w-12 h-12 rounded-full border-2 border-indigo-500"/>
+          <div>
+            <div class="text-lg font-semibold">Sabir Ali</div>
+            <div class="text-xs text-gray-500">Masters Student</div>
+          </div>
+        </div>
+        <button id="mobileMenuClose" class="p-2 rounded-md focus:outline-none"><i class="fa fa-times text-gray-700"></i></button>
+      </div>
+      <hr class="border-gray-200 mb-4" />
+      <div class="flex flex-col gap-2 text-sm">
+        <a href="#quickstart" class="hover:text-indigo-600"><i class="fa fa-rocket mr-2"></i>Quick-Start</a>
+        <a href="#survey" class="hover:text-indigo-600"><i class="fa fa-book mr-2"></i>Survey & Tutorial</a>
+        <a href="#toolkit" class="hover:text-indigo-600"><i class="fa fa-wrench mr-2"></i>Toolkit & Dataset</a>
+        <a href="#model" class="hover:text-indigo-600"><i class="fa fa-robot mr-2"></i>Model</a>
+        <a href="#other" class="hover:text-indigo-600"><i class="fa fa-layer-group mr-2"></i>Other</a>
+      </div>
+      <div class="mt-6 text-xs text-gray-500">© 2025 Sabir Ali</div>
+    </div>
+  </nav>
+
+  <!-- Sidebar (desktop only) -->
+  <aside id="sidebar" class="hidden lg:flex lg:flex-col fixed top-0 left-0 h-screen w-72 bg-white shadow-lg items-center p-6 overflow-y-auto">
     <img src="assets/photo.jpg" alt="Sabir Ali" class="rounded-full w-32 h-32 object-cover border-4 border-indigo-500 mb-4">
     <h1 class="text-2xl font-semibold text-gray-900">Sabir Ali</h1>
     <p class="text-sm text-gray-600 mt-1 text-center">Masters Student<br>@ Northeastern University</p>
@@ -205,7 +250,7 @@
   </aside>
 
   <!-- Main Content -->
-  <main class="ml-72 p-8 space-y-12">
+  <main id="mainContent" class="ml-0 lg:ml-72 p-4 sm:p-6 md:p-8 pt-20 lg:pt-8 space-y-12">
     <!-- Header Section -->
     <section>
       <div class="flex flex-wrap gap-2 mb-4">
@@ -2090,6 +2135,28 @@
       pdfjsLib.getDocument('').promise.catch(() => {
         // Ignore error - we're just warming up the worker
       });
+
+      // Mobile menu toggle handlers
+      const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+      const mobileMenuClose = document.getElementById('mobileMenuClose');
+      const mobileMenu = document.getElementById('mobileMenu');
+      const mobileOverlay = document.getElementById('mobileOverlay');
+
+      function openMobileMenu() {
+        mobileMenu.classList.remove('-translate-x-full');
+        mobileOverlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeMobileMenu() {
+        mobileMenu.classList.add('-translate-x-full');
+        mobileOverlay.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+      }
+
+      if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', openMobileMenu);
+      if (mobileMenuClose) mobileMenuClose.addEventListener('click', closeMobileMenu);
+      if (mobileOverlay) mobileOverlay.addEventListener('click', closeMobileMenu);
     });
   </script>
 </body>
